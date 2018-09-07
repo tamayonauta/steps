@@ -1,0 +1,53 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_HOST: tcp://docker:2375
+  REGISTRY_API: $CI_REGISTRY/$CI_PROJECT_PATH/app_name:1.0.0
+
+services:
+  - docker:dind
+
+tests:
+  image: python:3.6.6
+  services:
+    - name: mdillon/postgis:10-alpine
+      alias: db
+  stage: test
+  before_script:
+    - apt-get update -y && apt-get -y install binutils libproj-dev gdal-bin
+    - pip install -r requirements.txt
+  script:
+    - python manage.py test
+
+build:
+  image: docker:stable
+  stage: build
+  dependencies:
+    - tests
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $REGISTRY_API .
+    - docker push $REGISTRY_API
+
+deploy:
+  stage: deploy
+  dependencies:
+    - build
+  variables:
+    HEROKU_APP_NAME: heroku-app-name
+  environment:
+    name: staging
+    url: https://heroku-app-name.herokuapp.com/
+  before_script:
+    - apt-get update -qy
+    - apt-get install -y ruby-dev
+    - gem install dpl
+  script:
+    - dpl --provider=heroku --app=$HEROKU_APP_NAME --api-key=$HEROKU_API_KEY
+  only:
+    - master
