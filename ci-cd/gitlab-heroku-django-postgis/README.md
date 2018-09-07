@@ -57,4 +57,4 @@
 
 ## References
 
-[CI/CD Workflow reference](CI-CD-Workflow.jpg)
+[CI/CD Workflow reference](/ci-cd/CI-CD-Workflow.jpg)
